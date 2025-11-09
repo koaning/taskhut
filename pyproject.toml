@@ -1,0 +1,23 @@
+[project]
+name = "taskhut"
+version = "0.1.0"
+description = "A data annotation tool with disk-backed caching and task routing"
+requires-python = ">=3.12"
+dependencies = [
+    "diskcache>=5.6.3",
+    "polars>=0.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
