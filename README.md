@@ -63,10 +63,10 @@ tool = AnnotationTool(
     cache_path="./annotations.db"
 )
 
-# Annotate tasks
-for example in tool.get_tasks():
-    label = input(f"Label for '{example['text']}': ")
-    tool.save_annotation(example, label)
+# Annotate tasks using get_current_task (recommended)
+while task := tool.get_current_task():
+    label = input(f"Label for '{task['text']}': ")
+    tool.annotate(task, label)  # Automatically advances to next task
 
 # Check progress
 progress = tool.get_progress()
@@ -77,12 +77,10 @@ recent = tool.get_recent_tasks(limit=5)
 for example in recent:
     print(f"Recent: {example['text']}")
     # Optionally correct
-    # tool.save_annotation(example, "new_label")
+    # tool.annotate(example, "new_label")
 
-# Export annotations
-jsonl_output = tool.export_annotations(format="jsonl")
-with open("annotations.jsonl", "w") as f:
-    f.write(jsonl_output)
+# Export annotations (saves directly to file)
+tool.export_annotations(filepath="annotations.jsonl", format="jsonl")
 ```
 
 ## API Reference
@@ -110,11 +108,14 @@ AnnotationTool(
 
 ### Methods
 
-#### `get_tasks() -> Iterator[Dict[str, Any]]`
-Iterate through incomplete tasks assigned to this user.
+#### `get_current_task() -> Optional[Dict[str, Any]]`
+Get the current task to annotate. Returns `None` if all tasks are complete. This is the **recommended** way to iterate through tasks, as it maintains internal state and works seamlessly with `annotate()`.
 
-#### `save_annotation(example: Dict[str, Any], annotation: Any, metadata: Optional[Dict[str, Any]] = None)`
-Save an annotation for an example. Overwrites if the same example is annotated again.
+#### `get_tasks() -> Iterator[Dict[str, Any]]`
+Iterate through incomplete tasks assigned to this user. For advanced use cases. For simpler workflows, use `get_current_task()` instead.
+
+#### `annotate(example: Dict[str, Any], annotation: Any, metadata: Optional[Dict[str, Any]] = None)`
+Save an annotation for an example. If the annotated example matches the current task (from `get_current_task()`), this automatically advances to the next task. Overwrites if the same example is annotated again.
 
 #### `get_recent_tasks(limit: Optional[int] = None) -> List[Dict[str, Any]]`
 Get recently annotated tasks by this user for quick corrections (most recent first).
@@ -122,7 +123,7 @@ Get recently annotated tasks by this user for quick corrections (most recent fir
 #### `get_progress() -> Dict[str, Any]`
 Get annotation progress statistics. Returns dict with `total`, `completed`, `remaining`, `percent_complete`.
 
-#### `get_all_annotations(username: Optional[str] = None) -> List[Dict[str, Any]]`
+#### `get_annotations(username: Optional[str] = None) -> List[Dict[str, Any]]`
 Retrieve all annotations, optionally filtered by username.
 
 Each annotation record contains:
@@ -133,8 +134,8 @@ Each annotation record contains:
 - `annotation_date`: When the annotation was last updated
 - `metadata`: Optional metadata dict
 
-#### `export_annotations(format: str = "jsonl") -> str`
-Export annotations in JSONL format.
+#### `export_annotations(filepath: Optional[str] = None, format: str = "jsonl") -> str`
+Export annotations in JSONL format. If `filepath` is provided, saves to disk. Returns the serialized string.
 
 ## Examples
 
