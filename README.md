@@ -1,6 +1,6 @@
 # taskhut
 
-A data annotation tool with disk-backed caching and task routing.
+A task routing utility, meant for help with simple team-based annotation situations. It's pretty darn minimal, but really helps with getting started.
 
 ## Features
 
