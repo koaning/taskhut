@@ -32,3 +32,10 @@ clean:
 	rm -rf *.db demo_*.db examples/*.db
 	rm -f demo_*.jsonl examples/*.jsonl
 	@echo "✓ Cleanup complete!"
+
+
+pypi: clean
+	@echo "Building distribution..."
+	uv build
+	uv publishq
+	

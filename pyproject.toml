@@ -1,11 +1,12 @@
 [project]
 name = "taskhut"
-version = "0.1.0"
+version = "0.0.1"
 description = "A data annotation tool with disk-backed caching and task routing"
 requires-python = ">=3.12"
 dependencies = [
     "diskcache>=5.6.3",
     "polars>=0.20.0",
+    "pydantic>=2.12.4",
 ]
 
 [project.optional-dependencies]

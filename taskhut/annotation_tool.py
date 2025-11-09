@@ -1,9 +1,20 @@
+from curses import meta
 import json
 import hashlib
 from typing import Callable, Dict, Any, List, Optional, Iterator
 from datetime import datetime
 from collections import deque
 from diskcache import Cache
+from pydantic import BaseModel
+
+
+class Annotation(BaseModel):
+    example: Dict[str, Any]
+    user: str
+    annotation: Dict[str, Any]
+    creation_date: str
+    annotation_date: str
+    metadata: Optional[Dict[str, Any]] = None
 
 
 def default_hash_func(example: Dict[str, Any]) -> str:
@@ -162,8 +173,10 @@ class AnnotationTool:
         creation_date = existing["creation_date"] if existing else datetime.now().isoformat()
 
         # Build annotation record
+        metadata = metadata or {}
+        metadata["example_hash"] = example_hash
         record = {
-            "original_example": example,
+            "example": example,
             "user": self.username,
             "annotation": annotation,
             "creation_date": creation_date,
@@ -172,17 +185,17 @@ class AnnotationTool:
         }
 
         # Save to disk cache
-        self.cache[cache_key] = record
+        self.cache[cache_key] = Annotation(**record).model_dump()
 
         # Update recent history (remove if exists, then add to end)
-        if example_hash in self._recent_hashes:
-            self._recent_hashes.remove(example_hash)
-        self._recent_hashes.append(example_hash)
+        if cache_key in self._recent_hashes:
+            self._recent_hashes.remove(cache_key)
+        self._recent_hashes.append(cache_key)
 
         # If this was the current task, advance to the next one
         if self._current_task is not None:
             current_hash = self.hash_func(self._current_task)
-            if current_hash == example_hash:
+            if current_hash == cache_key:
                 self._current_task = None  # Will be fetched on next get_current_task() call
 
     def get_recent_tasks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
