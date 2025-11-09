@@ -38,4 +38,3 @@ pypi: clean
 	@echo "Building distribution..."
 	uv build
 	uv publishq
-	
