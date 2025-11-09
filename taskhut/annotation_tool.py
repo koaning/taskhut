@@ -83,12 +83,19 @@ class AnnotationTool:
         # Stores example hashes in order (most recent last)
         self._recent_hashes: deque = deque(maxlen=recent_history_size)
 
+        # Track the current task
+        self._current_task: Optional[Dict[str, Any]] = None
+        self._task_iterator: Optional[Iterator[Dict[str, Any]]] = None
+
     def get_tasks(self) -> Iterator[Dict[str, Any]]:
         """
         Iterate through incomplete tasks assigned to this user.
 
         Yields:
             Examples that are (1) assigned to this user and (2) not yet annotated
+
+        Note: This method is provided for advanced use cases. For simpler workflows,
+        use get_current_task() and annotate() which automatically track progress.
         """
         for example in self.data_source:
             # Check if this task is assigned to the current user
@@ -102,14 +109,45 @@ class AnnotationTool:
             if cache_key not in self.cache:
                 yield example
 
-    def save_annotation(
+    def get_current_task(self) -> Optional[Dict[str, Any]]:
+        """
+        Get the current task to annotate.
+
+        Returns:
+            The current task dict, or None if all tasks are complete
+
+        Example:
+            >>> tool = AnnotationTool(data_source=data, username="alice")
+            >>> while task := tool.get_current_task():
+            ...     label = input(f"Label for {task}: ")
+            ...     tool.annotate(task, label)
+        """
+        # If we don't have a current task, try to get the next one
+        if self._current_task is None:
+            # Initialize or reset the iterator if needed
+            if self._task_iterator is None:
+                self._task_iterator = self.get_tasks()
+
+            # Try to get the next task
+            try:
+                self._current_task = next(self._task_iterator)
+            except StopIteration:
+                self._current_task = None
+                self._task_iterator = None
+
+        return self._current_task
+
+    def annotate(
         self,
         example: Dict[str, Any],
-        annotation: Any,
+        annotation: Dict[str, Any],
         metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Save an annotation for an example.
+
+        If the annotated example matches the current task (from get_current_task()),
+        this automatically advances to the next task.
 
         Args:
             example: The example being annotated
@@ -140,6 +178,12 @@ class AnnotationTool:
         if example_hash in self._recent_hashes:
             self._recent_hashes.remove(example_hash)
         self._recent_hashes.append(example_hash)
+
+        # If this was the current task, advance to the next one
+        if self._current_task is not None:
+            current_hash = self.hash_func(self._current_task)
+            if current_hash == example_hash:
+                self._current_task = None  # Will be fetched on next get_current_task() call
 
     def get_recent_tasks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
@@ -202,7 +246,7 @@ class AnnotationTool:
             "percent_complete": round(percent_complete, 2)
         }
 
-    def get_all_annotations(self, username: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_annotations(self, username: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Retrieve all annotations, optionally filtered by username.
 
@@ -227,21 +271,29 @@ class AnnotationTool:
 
         return annotations
 
-    def export_annotations(self, format: str = "jsonl") -> str:
+    def export_annotations(self, filepath: Optional[str] = None, format: str = "jsonl") -> str:
         """
         Export annotations in specified format.
 
         Args:
+            filepath: Optional path to save the export. If None, returns string only.
             format: Export format ('jsonl' supported)
 
         Returns:
-            Serialized annotations
+            Serialized annotations as string
         """
         if format != "jsonl":
             raise ValueError(f"Unsupported format: {format}. Only 'jsonl' is supported.")
 
-        annotations = self.get_all_annotations()
+        annotations = self.get_annotations()
 
         # Convert to JSONL (one JSON object per line)
         lines = [json.dumps(record, ensure_ascii=False) for record in annotations]
-        return "\n".join(lines)
+        output = "\n".join(lines)
+
+        # Save to file if filepath is provided
+        if filepath is not None:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(output)
+
+        return output

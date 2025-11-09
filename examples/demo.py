@@ -13,9 +13,9 @@ data = [
 
 
 def example_1_basic_annotation():
-    """Example 1: Basic annotation with correction capability"""
+    """Example 1: Basic annotation with get_current_task workflow"""
     print("=" * 60)
-    print("Example 1: Basic annotation with correction")
+    print("Example 1: Basic annotation with get_current_task()")
     print("=" * 60)
 
     tool = AnnotationTool(
@@ -30,17 +30,17 @@ def example_1_basic_annotation():
     print(f"\nProgress: {progress['completed']}/{progress['total']} "
           f"({progress['percent_complete']}% complete)")
 
-    # Annotate first 3 examples
+    # Annotate first 3 examples using get_current_task
     print("\nAnnotating first 3 examples...")
-    for i, example in enumerate(tool.get_tasks()):
-        if i >= 3:
+    sentiments = ["positive", "positive", "neutral"]
+    for i in range(3):
+        task = tool.get_current_task()
+        if task is None:
             break
-        print(f"\nExample: {example['text']}")
-        # Simulating user input with predefined labels
-        sentiments = ["positive", "positive", "neutral"]
+        print(f"\nExample: {task['text']}")
         sentiment = sentiments[i]
         print(f"Label: {sentiment}")
-        tool.save_annotation(example, sentiment)
+        tool.annotate(task, sentiment)  # Automatically advances to next task
 
     # Check progress again
     progress = tool.get_progress()
@@ -53,11 +53,11 @@ def example_1_basic_annotation():
     if recent:
         print(f"Correcting: {recent[0]['text']}")
         print(f"New label: negative")
-        tool.save_annotation(recent[0], "negative")
+        tool.annotate(recent[0], "negative")
 
     # View recent annotations
     print("\n--- Recent annotations ---")
-    all_annotations = tool.get_all_annotations(username="alice")
+    all_annotations = tool.get_annotations(username="alice")
     for ann in all_annotations[-3:]:
         print(f"{ann['original_example']['text']}: {ann['annotation']}")
 
@@ -75,7 +75,7 @@ def example_2_review_recent():
     )
 
     # Get all annotations by alice
-    annotations = tool.get_all_annotations(username="alice")
+    annotations = tool.get_annotations(username="alice")
     print(f"\nFound {len(annotations)} annotations by alice")
 
     # Show recent 3
@@ -102,14 +102,10 @@ def example_3_export():
         cache_path="./demo_annotations.db"
     )
 
-    # Export to JSONL
-    jsonl_output = tool.export_annotations(format="jsonl")
+    # Export to JSONL (saves directly to file)
+    jsonl_output = tool.export_annotations(filepath="./demo_export.jsonl", format="jsonl")
     print("\nExported annotations (JSONL format):")
     print(jsonl_output)
-
-    # Could save to file
-    with open("./demo_export.jsonl", "w") as f:
-        f.write(jsonl_output)
     print("\nSaved to demo_export.jsonl")
 
 
