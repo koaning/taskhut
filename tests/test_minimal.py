@@ -1,7 +1,6 @@
 """Minimal unit tests with proper cleanup using tmp_path fixture."""
+
 import json
-from pathlib import Path
-import pytest
 from taskhut import AnnotationTool, default_hash_func
 
 
@@ -40,7 +39,9 @@ def test_annotation_tool_basic_workflow(tmp_path):
 def test_get_progress(tmp_path):
     """Progress should calculate correctly with empty data and with annotations."""
     # Test empty data
-    tool_empty = AnnotationTool(data_source=[], username="alice", cache_path=str(tmp_path / "empty.db"))
+    tool_empty = AnnotationTool(
+        data_source=[], username="alice", cache_path=str(tmp_path / "empty.db")
+    )
     progress = tool_empty.get_progress()
     assert progress["total"] == 0
     assert progress["completed"] == 0
@@ -48,7 +49,9 @@ def test_get_progress(tmp_path):
 
     # Test with annotations
     data = [{"id": i, "text": f"text {i}"} for i in range(5)]
-    tool = AnnotationTool(data_source=data, username="alice", cache_path=str(tmp_path / "progress.db"))
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "progress.db")
+    )
 
     for i, task in enumerate(tool.get_tasks()):
         if i >= 2:
@@ -65,7 +68,9 @@ def test_get_progress(tmp_path):
 def test_get_recent_tasks(tmp_path):
     """Recent tasks should handle empty state and limit parameter."""
     data = [{"id": i, "text": f"text {i}"} for i in range(5)]
-    tool = AnnotationTool(data_source=data, username="alice", cache_path=str(tmp_path / "recent.db"))
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "recent.db")
+    )
 
     # Test empty state
     recent = tool.get_recent_tasks()
@@ -88,7 +93,7 @@ def test_custom_routing_function(tmp_path):
         {"id": 0, "user_assigned": "alice"},
         {"id": 1, "user_assigned": "bob"},
         {"id": 2, "user_assigned": "alice"},
-        {"id": 3, "user_assigned": "bob"}
+        {"id": 3, "user_assigned": "bob"},
     ]
 
     def custom_routing(example, username):
@@ -98,7 +103,7 @@ def test_custom_routing_function(tmp_path):
         data_source=data,
         username="alice",
         cache_path=str(tmp_path / "routing.db"),
-        routing_func=custom_routing
+        routing_func=custom_routing,
     )
 
     tasks = list(tool_alice.get_tasks())
@@ -111,7 +116,9 @@ def test_custom_routing_function(tmp_path):
 def test_annotate_metadata_and_updates(tmp_path):
     """Annotate should preserve metadata and creation dates on updates."""
     data = [{"id": 1, "text": "test"}]
-    tool = AnnotationTool(data_source=data, username="alice", cache_path=str(tmp_path / "metadata.db"))
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "metadata.db")
+    )
 
     task = tool.get_current_task()
 
@@ -140,13 +147,15 @@ def test_annotate_metadata_and_updates(tmp_path):
 def test_export_to_file(tmp_path):
     """Export should write valid JSONL to file."""
     data = [{"id": 1, "text": "test"}]
-    tool = AnnotationTool(data_source=data, username="alice", cache_path=str(tmp_path / "export.db"))
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "export.db")
+    )
 
     task = tool.get_current_task()
     tool.annotate(task, {"label": "positive"})
 
     export_path = tmp_path / "export.jsonl"
-    output = tool.export_annotations(filepath=str(export_path), format="jsonl")
+    tool.export_annotations(filepath=str(export_path), format="jsonl")
 
     # Verify file exists and contains valid JSONL
     assert export_path.exists()

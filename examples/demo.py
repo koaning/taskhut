@@ -8,7 +8,7 @@ data = [
     {"id": 2, "text": "Dogs are loyal animals"},
     {"id": 3, "text": "Birds can fly"},
     {"id": 4, "text": "Python is a programming language"},
-    {"id": 5, "text": "The sun is shining today"}
+    {"id": 5, "text": "The sun is shining today"},
 ]
 
 
@@ -22,13 +22,15 @@ def example_1_basic_annotation():
         data_source=data,
         username="alice",
         cache_path="./demo_annotations.db",
-        recent_history_size=5
+        recent_history_size=5,
     )
 
     # Show progress
     progress = tool.get_progress()
-    print(f"\nProgress: {progress['completed']}/{progress['total']} "
-          f"({progress['percent_complete']}% complete)")
+    print(
+        f"\nProgress: {progress['completed']}/{progress['total']} "
+        f"({progress['percent_complete']}% complete)"
+    )
 
     # Annotate first 3 examples using get_current_task
     print("\nAnnotating first 3 examples...")
@@ -44,15 +46,17 @@ def example_1_basic_annotation():
 
     # Check progress again
     progress = tool.get_progress()
-    print(f"\nProgress: {progress['completed']}/{progress['total']} "
-          f"({progress['percent_complete']}% complete)")
+    print(
+        f"\nProgress: {progress['completed']}/{progress['total']} "
+        f"({progress['percent_complete']}% complete)"
+    )
 
     # Correct the last one
     print("\n--- Correcting last annotation ---")
     recent = tool.get_recent_tasks(limit=1)
     if recent:
         print(f"Correcting: {recent[0]['text']}")
-        print(f"New label: negative")
+        print("New label: negative")
         tool.annotate(recent[0], "negative")
 
     # View recent annotations
@@ -68,11 +72,7 @@ def example_2_review_recent():
     print("Example 2: Review recent annotations")
     print("=" * 60)
 
-    tool = AnnotationTool(
-        data_source=data,
-        username="alice",
-        cache_path="./demo_annotations.db"
-    )
+    tool = AnnotationTool(data_source=data, username="alice", cache_path="./demo_annotations.db")
 
     # Get all annotations by alice
     annotations = tool.get_annotations(username="alice")
@@ -83,7 +83,7 @@ def example_2_review_recent():
     recent = tool.get_recent_tasks(limit=3)
     for i, example in enumerate(recent, 1):
         # Find the annotation for this example
-        ann = next((a for a in annotations if a['original_example'] == example), None)
+        ann = next((a for a in annotations if a["original_example"] == example), None)
         if ann:
             print(f"{i}. Text: {example['text']}")
             print(f"   Label: {ann['annotation']}")
@@ -96,11 +96,7 @@ def example_3_export():
     print("Example 3: Export annotations to JSONL")
     print("=" * 60)
 
-    tool = AnnotationTool(
-        data_source=data,
-        username="alice",
-        cache_path="./demo_annotations.db"
-    )
+    tool = AnnotationTool(data_source=data, username="alice", cache_path="./demo_annotations.db")
 
     # Export to JSONL (saves directly to file)
     jsonl_output = tool.export_annotations(filepath="./demo_export.jsonl", format="jsonl")

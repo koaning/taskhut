@@ -1,4 +1,3 @@
-from curses import meta
 import json
 import hashlib
 from typing import Callable, Dict, Any, List, Optional, Iterator
@@ -30,7 +29,7 @@ def default_hash_func(example: Dict[str, Any]) -> str:
         SHA256 hex digest of the example
     """
     json_str = json.dumps(example, sort_keys=True, ensure_ascii=True)
-    return hashlib.sha256(json_str.encode('utf-8')).hexdigest()
+    return hashlib.sha256(json_str.encode("utf-8")).hexdigest()
 
 
 def default_routing_func(example: Dict[str, Any], username: str) -> bool:
@@ -38,6 +37,7 @@ def default_routing_func(example: Dict[str, Any], username: str) -> bool:
     Default routing function that assigns all tasks to all users.
     """
     return True
+
 
 class AnnotationTool:
     """
@@ -67,7 +67,7 @@ class AnnotationTool:
         cache_path: str = "./annotations.db",
         routing_func: Callable[[Dict[str, Any], str], bool] = default_routing_func,
         recent_history_size: int = 5,
-        hash_func: Callable[[Dict[str, Any]], str] = default_hash_func
+        hash_func: Callable[[Dict[str, Any]], str] = default_hash_func,
     ):
         """
         Initialize the annotation tool.
@@ -152,7 +152,7 @@ class AnnotationTool:
         self,
         example: Dict[str, Any],
         annotation: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Save an annotation for an example.
@@ -181,7 +181,7 @@ class AnnotationTool:
             "annotation": annotation,
             "creation_date": creation_date,
             "annotation_date": datetime.now().isoformat(),
-            "metadata": metadata or {}
+            "metadata": metadata or {},
         }
 
         # Save to disk cache
@@ -256,7 +256,7 @@ class AnnotationTool:
             "total": total,
             "completed": completed,
             "remaining": remaining,
-            "percent_complete": round(percent_complete, 2)
+            "percent_complete": round(percent_complete, 2),
         }
 
     def get_annotations(self, username: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -306,7 +306,7 @@ class AnnotationTool:
 
         # Save to file if filepath is provided
         if filepath is not None:
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write(output)
 
         return output
