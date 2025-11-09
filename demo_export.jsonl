@@ -1,0 +1,5 @@
+{"original_example": {"id": 1, "text": "The cat sat on the mat"}, "user": "alice", "annotation": "positive", "creation_date": "2025-11-09T14:26:29.969109", "annotation_date": "2025-11-09T14:26:29.969114", "metadata": {}}
+{"original_example": {"id": 2, "text": "Dogs are loyal animals"}, "user": "alice", "annotation": "positive", "creation_date": "2025-11-09T14:26:29.969321", "annotation_date": "2025-11-09T14:26:29.969323", "metadata": {}}
+{"original_example": {"id": 3, "text": "Birds can fly"}, "user": "alice", "annotation": "negative", "creation_date": "2025-11-09T14:26:29.969416", "annotation_date": "2025-11-09T14:26:29.969547", "metadata": {}}
+{"original_example": {"id": 4, "text": "Python is a programming language"}, "user": "alice", "annotation": "positive", "creation_date": "2025-11-09T14:28:05.147332", "annotation_date": "2025-11-09T14:28:05.147338", "metadata": {}}
+{"original_example": {"id": 5, "text": "The sun is shining today"}, "user": "alice", "annotation": "negative", "creation_date": "2025-11-09T14:28:05.147621", "annotation_date": "2025-11-09T14:28:05.147823", "metadata": {}}
