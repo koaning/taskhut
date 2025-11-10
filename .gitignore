@@ -49,3 +49,4 @@ htmlcov/
 # Demo/temp files
 demo.py
 demo_export.jsonl
+weave-demo.py

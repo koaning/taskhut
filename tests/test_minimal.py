@@ -53,10 +53,8 @@ def test_get_progress(tmp_path):
         data_source=data, username="alice", cache_path=str(tmp_path / "progress.db")
     )
 
-    for i, task in enumerate(tool.get_tasks()):
-        if i >= 2:
-            break
-        tool.annotate(task, {"label": f"label_{i}"})
+    tool.annotate(tool.get_current_task(), {"label": "label"})
+    tool.annotate(tool.get_current_task(), {"label": "label"})
 
     progress = tool.get_progress()
     assert progress["total"] == 5

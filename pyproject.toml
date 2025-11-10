@@ -5,7 +5,6 @@ description = "A data annotation tool with disk-backed caching and task routing"
 requires-python = ">=3.12"
 dependencies = [
     "diskcache>=5.6.3",
-    "polars>=0.20.0",
     "pydantic>=2.12.4",
 ]
 
@@ -13,7 +12,13 @@ dependencies = [
 dev = [
     "pytest>=7.4.0",
     "ruff>=0.1.0",
+    "anthropic>=0.72.0",
+    "mofresh>=0.2.6",
     "pre-commit>=3.0.0",
+    "marimo",
+    "moboard>=0.1.0",
+    "mohtml>=0.1.11",
+    "polars>=0.20.0",
 ]
 
 [build-system]
