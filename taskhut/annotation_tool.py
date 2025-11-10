@@ -98,6 +98,19 @@ class AnnotationTool:
         self._current_task: Optional[Dict[str, Any]] = None
         self._task_iterator: Optional[Iterator[Dict[str, Any]]] = None
 
+    def _cache_key(self, example: Dict[str, Any]) -> str:
+        """
+        Calculate the cache key for an example.
+
+        Args:
+            example: The example dict to calculate the key for
+
+        Returns:
+            Cache key in format "username:hash"
+        """
+        example_hash = self.hash_func(example)
+        return f"{self.username}:{example_hash}"
+
     def get_tasks(self) -> Iterator[Dict[str, Any]]:
         """
         Iterate through incomplete tasks assigned to this user.
@@ -114,8 +127,7 @@ class AnnotationTool:
                 continue
 
             # Check if this example has already been annotated by this user
-            example_hash = self.hash_func(example)
-            cache_key = f"{self.username}:{example_hash}"
+            cache_key = self._cache_key(example)
 
             if cache_key not in self.cache:
                 yield example
@@ -165,14 +177,14 @@ class AnnotationTool:
             annotation: The annotation/label
             metadata: Optional metadata (timestamp, confidence, etc.)
         """
-        example_hash = self.hash_func(example)
-        cache_key = f"{self.username}:{example_hash}"
+        cache_key = self._cache_key(example)
 
         # Check if this is an update or new annotation
         existing = self.cache.get(cache_key)
         creation_date = existing["creation_date"] if existing else datetime.now().isoformat()
 
         # Build annotation record
+        example_hash = self.hash_func(example)
         metadata = metadata or {}
         metadata["example_hash"] = example_hash
         record = {
@@ -194,8 +206,8 @@ class AnnotationTool:
 
         # If this was the current task, advance to the next one
         if self._current_task is not None:
-            current_hash = self.hash_func(self._current_task)
-            if current_hash == cache_key:
+            current_cache_key = self._cache_key(self._current_task)
+            if current_cache_key == cache_key:
                 self._current_task = None  # Will be fetched on next get_current_task() call
 
     def get_recent_tasks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -244,8 +256,7 @@ class AnnotationTool:
             if not self.routing_func(example, self.username):
                 continue
 
-            example_hash = self.hash_func(example)
-            cache_key = f"{self.username}:{example_hash}"
+            cache_key = self._cache_key(example)
             if cache_key in self.cache:
                 completed += 1
 

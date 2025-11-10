@@ -62,6 +62,21 @@ def test_get_progress(tmp_path):
     assert progress["remaining"] == 3
     assert progress["percent_complete"] == 40.0
 
+    tool.annotate(tool.get_current_task(), {"label": "label"})
+    tool.annotate(tool.get_current_task(), {"label": "label"})
+
+    progress = tool.get_progress()
+    assert progress["completed"] == 4
+    assert progress["remaining"] == 1
+    assert progress["percent_complete"] == 80.0
+
+    tool.annotate(tool.get_current_task(), {"label": "label"})
+
+    progress = tool.get_progress()
+    assert progress["completed"] == 5
+    assert progress["remaining"] == 0
+    assert progress["percent_complete"] == 100.0
+
 
 def test_get_recent_tasks(tmp_path):
     """Recent tasks should handle empty state and limit parameter."""
@@ -162,3 +177,18 @@ def test_export_to_file(tmp_path):
         assert "example" in record
         assert "annotation" in record
         assert record["user"] == "alice"
+
+
+def test_annotation_loop(tmp_path):
+    """Test useful loop for the frontend."""
+    data = [{"id": i, "text": f"test {i}"} for i in range(15)]
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "export.db")
+    )
+
+    for i in range(15):
+        task = tool.get_current_task()
+        tool.annotate(task, {"label": "positive"})
+
+    assert tool.get_progress()["completed"] == 15
+    assert len(tool.get_annotations()) == 15
