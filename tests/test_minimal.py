@@ -53,16 +53,29 @@ def test_get_progress(tmp_path):
         data_source=data, username="alice", cache_path=str(tmp_path / "progress.db")
     )
 
-    for i, task in enumerate(tool.get_tasks()):
-        if i >= 2:
-            break
-        tool.annotate(task, {"label": f"label_{i}"})
+    tool.annotate(tool.get_current_task(), {"label": "label"})
+    tool.annotate(tool.get_current_task(), {"label": "label"})
 
     progress = tool.get_progress()
     assert progress["total"] == 5
     assert progress["completed"] == 2
     assert progress["remaining"] == 3
     assert progress["percent_complete"] == 40.0
+
+    tool.annotate(tool.get_current_task(), {"label": "label"})
+    tool.annotate(tool.get_current_task(), {"label": "label"})
+
+    progress = tool.get_progress()
+    assert progress["completed"] == 4
+    assert progress["remaining"] == 1
+    assert progress["percent_complete"] == 80.0
+
+    tool.annotate(tool.get_current_task(), {"label": "label"})
+
+    progress = tool.get_progress()
+    assert progress["completed"] == 5
+    assert progress["remaining"] == 0
+    assert progress["percent_complete"] == 100.0
 
 
 def test_get_recent_tasks(tmp_path):
@@ -166,36 +179,16 @@ def test_export_to_file(tmp_path):
         assert record["user"] == "alice"
 
 
-def test_annotation_count_increases_in_loop(tmp_path):
-    """Annotation count should increase when annotating in a loop."""
-    data = [
-        {"id": 1, "text": "First example"},
-        {"id": 2, "text": "Second example"},
-        {"id": 3, "text": "Third example"},
-    ]
-
+def test_annotation_loop(tmp_path):
+    """Test useful loop for the frontend."""
+    data = [{"id": i, "text": f"test {i}"} for i in range(15)]
     tool = AnnotationTool(
-        data_source=data,
-        username="test_user",
-        cache_path=str(tmp_path / "loop_test.db")
+        data_source=data, username="alice", cache_path=str(tmp_path / "export.db")
     )
 
-    # Initial state
-    assert len(tool.get_annotations()) == 0
+    for i in range(15):
+        task = tool.get_current_task()
+        tool.annotate(task, {"label": "positive"})
 
-    # Repeat the exact code block multiple times
-    for i in range(3):
-        tool.annotate(
-            example=tool.get_current_task(),
-            annotation={
-                "topic": "data-quality",
-                "label": f"label_{i}"
-            }
-        )
-        assert len(tool.get_annotations()) == i + 1
-
-    # Verify all examples are different (not duplicates)
-    annotations = tool.get_annotations()
-    example_ids = [ann["example"]["id"] for ann in annotations]
-    assert len(set(example_ids)) == 3, "All annotated examples should be different"
-    assert set(example_ids) == {1, 2, 3}, f"Expected IDs {{1, 2, 3}}, got {set(example_ids)}"
+    assert tool.get_progress()["completed"] == 15
+    assert len(tool.get_annotations()) == 15
