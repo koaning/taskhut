@@ -164,3 +164,38 @@ def test_export_to_file(tmp_path):
         assert "example" in record
         assert "annotation" in record
         assert record["user"] == "alice"
+
+
+def test_annotation_count_increases_in_loop(tmp_path):
+    """Annotation count should increase when annotating in a loop."""
+    data = [
+        {"id": 1, "text": "First example"},
+        {"id": 2, "text": "Second example"},
+        {"id": 3, "text": "Third example"},
+    ]
+
+    tool = AnnotationTool(
+        data_source=data,
+        username="test_user",
+        cache_path=str(tmp_path / "loop_test.db")
+    )
+
+    # Initial state
+    assert len(tool.get_annotations()) == 0
+
+    # Repeat the exact code block multiple times
+    for i in range(3):
+        tool.annotate(
+            example=tool.get_current_task(),
+            annotation={
+                "topic": "data-quality",
+                "label": f"label_{i}"
+            }
+        )
+        assert len(tool.get_annotations()) == i + 1
+
+    # Verify all examples are different (not duplicates)
+    annotations = tool.get_annotations()
+    example_ids = [ann["example"]["id"] for ann in annotations]
+    assert len(set(example_ids)) == 3, "All annotated examples should be different"
+    assert set(example_ids) == {1, 2, 3}, f"Expected IDs {{1, 2, 3}}, got {set(example_ids)}"

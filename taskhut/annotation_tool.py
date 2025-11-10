@@ -195,7 +195,8 @@ class AnnotationTool:
         # If this was the current task, advance to the next one
         if self._current_task is not None:
             current_hash = self.hash_func(self._current_task)
-            if current_hash == cache_key:
+            current_cache_key = f"{self.username}:{current_hash}"
+            if current_cache_key == cache_key:
                 self._current_task = None  # Will be fetched on next get_current_task() call
 
     def get_recent_tasks(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
