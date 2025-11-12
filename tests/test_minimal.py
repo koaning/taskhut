@@ -423,4 +423,4 @@ def test_dedup_validates_metadata_column(tmp_path):
         tool.get_annotations(dedup=invalid_upstream)
         assert False, "Should have raised ValueError"
     except ValueError as e:
-        assert "metadata" in str(e).lower()
+        assert "dedup source does not match annotation schema" in str(e).lower()
