@@ -42,12 +42,12 @@ def default_routing_func(example: Dict[str, Any], username: str) -> bool:
     return True
 
 
-class AnnotationTool:
+class TaskHut:
     """
     A data annotation tool with disk-backed caching and task routing.
 
     Examples:
-        >>> tool = AnnotationTool(
+        >>> tool = TaskHut(
         ...     data_source=[{"id": 1, "text": "hello"}, {"id": 2, "text": "world"}],
         ...     username="alice",
         ...     cache_path="./annotations.db"
@@ -143,7 +143,7 @@ class AnnotationTool:
             The current task dict, or None if all tasks are complete
 
         Example:
-            >>> tool = AnnotationTool(data_source=data, username="alice")
+            >>> tool = TaskHut(data_source=data, username="alice")
             >>> while task := tool.get_current_task():
             ...     label = input(f"Label for {task}: ")
             ...     tool.annotate(task, label)
