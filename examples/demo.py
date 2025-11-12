@@ -1,6 +1,6 @@
 """Basic demonstration of the AnnotationTool"""
 
-from taskhut import AnnotationTool
+from taskhut import TaskHut
 
 # Sample data
 data = [
@@ -18,7 +18,7 @@ def example_1_basic_annotation():
     print("Example 1: Basic annotation with get_current_task()")
     print("=" * 60)
 
-    tool = AnnotationTool(
+    tool = TaskHut(
         data_source=data,
         username="alice",
         cache_path="./demo_annotations.db",
@@ -72,7 +72,7 @@ def example_2_review_recent():
     print("Example 2: Review recent annotations")
     print("=" * 60)
 
-    tool = AnnotationTool(data_source=data, username="alice", cache_path="./demo_annotations.db")
+    tool = TaskHut(data_source=data, username="alice", cache_path="./demo_annotations.db")
 
     # Get all annotations by alice
     annotations = tool.get_annotations(username="alice")
@@ -96,7 +96,7 @@ def example_3_export():
     print("Example 3: Export annotations to JSONL")
     print("=" * 60)
 
-    tool = AnnotationTool(data_source=data, username="alice", cache_path="./demo_annotations.db")
+    tool = TaskHut(data_source=data, username="alice", cache_path="./demo_annotations.db")
 
     # Export to JSONL (saves directly to file)
     jsonl_output = tool.export_annotations(filepath="./demo_export.jsonl", format="jsonl")

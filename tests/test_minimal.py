@@ -3,14 +3,14 @@
 import json
 import pytest
 import polars as pl
-from taskhut import AnnotationTool, default_hash_func
+from taskhut import TaskHut, default_hash_func
 
 
 @pytest.fixture
 def annotated_tool(tmp_path):
     """Create an AnnotationTool with 5 items, 3 annotated."""
     data = [{"id": i, "text": f"test {i}"} for i in range(5)]
-    tool = AnnotationTool(data_source=data, username="alice", cache_path=str(tmp_path / "test.db"))
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "test.db"))
 
     # Annotate 3 tasks
     for _ in range(3):
@@ -41,7 +41,7 @@ def test_annotation_tool_basic_workflow(tmp_path):
     cache_path = tmp_path / "test.db"
 
     # Init and verify setup
-    tool = AnnotationTool(data_source=data, username="alice", cache_path=str(cache_path))
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(cache_path))
     assert tool.username == "alice"
     assert cache_path.exists()
 
@@ -55,9 +55,7 @@ def test_annotation_tool_basic_workflow(tmp_path):
 def test_get_progress(tmp_path):
     """Progress should calculate correctly with empty data and with annotations."""
     # Test empty data
-    tool_empty = AnnotationTool(
-        data_source=[], username="alice", cache_path=str(tmp_path / "empty.db")
-    )
+    tool_empty = TaskHut(data_source=[], username="alice", cache_path=str(tmp_path / "empty.db"))
     progress = tool_empty.get_progress()
     assert progress["total"] == 0
     assert progress["completed"] == 0
@@ -65,9 +63,7 @@ def test_get_progress(tmp_path):
 
     # Test with annotations
     data = [{"id": i, "text": f"text {i}"} for i in range(5)]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "progress.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "progress.db"))
 
     tool.annotate(tool.get_current_task(), {"label": "label"})
     tool.annotate(tool.get_current_task(), {"label": "label"})
@@ -97,9 +93,7 @@ def test_get_progress(tmp_path):
 def test_get_recent_tasks(tmp_path):
     """Recent tasks should handle empty state and limit parameter."""
     data = [{"id": i, "text": f"text {i}"} for i in range(5)]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "recent.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "recent.db"))
 
     # Test empty state
     recent = tool.get_recent_tasks()
@@ -128,7 +122,7 @@ def test_custom_routing_function(tmp_path):
     def custom_routing(example, username):
         return example.get("user_assigned") == username
 
-    tool_alice = AnnotationTool(
+    tool_alice = TaskHut(
         data_source=data,
         username="alice",
         cache_path=str(tmp_path / "routing.db"),
@@ -145,9 +139,7 @@ def test_custom_routing_function(tmp_path):
 def test_annotate_metadata_and_updates(tmp_path):
     """Annotate should preserve metadata and creation dates on updates."""
     data = [{"id": 1, "text": "test"}]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "metadata.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "metadata.db"))
 
     task = tool.get_current_task()
 
@@ -176,9 +168,7 @@ def test_annotate_metadata_and_updates(tmp_path):
 def test_export_to_file(tmp_path):
     """Export should write valid JSONL to file and infer format from extension."""
     data = [{"id": 1, "text": "test"}]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "export.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "export.db"))
 
     task = tool.get_current_task()
     tool.annotate(task, {"label": "positive"})
@@ -198,9 +188,7 @@ def test_export_to_file(tmp_path):
 def test_annotation_loop(tmp_path):
     """Test useful loop for the frontend."""
     data = [{"id": i, "text": f"test {i}"} for i in range(15)]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "export.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "export.db"))
 
     for i in range(15):
         task = tool.get_current_task()
@@ -258,9 +246,7 @@ def test_get_annotations_return_formats(annotated_tool, return_as):
 def test_export_formats(tmp_path, file_ext, reader_func):
     """Test exporting annotations in different formats."""
     data = [{"id": i, "text": f"test {i}"} for i in range(3)]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "formats.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "formats.db"))
 
     # Annotate some tasks
     for _ in range(3):
@@ -281,9 +267,7 @@ def test_export_formats(tmp_path, file_ext, reader_func):
 def test_export_without_filepath_returns_jsonl_string(tmp_path):
     """Test that export_annotations without filepath returns JSONL string."""
     data = [{"id": 1, "text": "test"}]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "string.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "string.db"))
 
     task = tool.get_current_task()
     tool.annotate(task, {"label": "positive"})
@@ -337,7 +321,7 @@ def make_dataframe_dedup_source(annotations, tmp_path):
 def test_get_annotations_with_dedup(tmp_path, make_dedup_source, num_upstream):
     """Test deduplication using different source types."""
     data = [{"id": i, "text": f"test {i}"} for i in range(5)]
-    tool = AnnotationTool(
+    tool = TaskHut(
         data_source=data,
         username="alice",
         cache_path=str(tmp_path / "dedup.db"),
@@ -364,9 +348,7 @@ def test_get_annotations_with_dedup(tmp_path, make_dedup_source, num_upstream):
 def test_export_annotations_with_dedup(tmp_path):
     """Test export_annotations with deduplication."""
     data = [{"id": i, "text": f"test {i}"} for i in range(5)]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "dedup4.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "dedup4.db"))
 
     # Annotate 5 tasks
     for _ in range(5):
@@ -398,9 +380,7 @@ def test_export_annotations_with_dedup(tmp_path):
 def test_dedup_with_no_overlap(tmp_path):
     """Test deduplication when there's no overlap between datasets."""
     data = [{"id": i, "text": f"test {i}"} for i in range(3)]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "dedup5.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "dedup5.db"))
 
     # Annotate 3 tasks
     for _ in range(3):
@@ -409,7 +389,7 @@ def test_dedup_with_no_overlap(tmp_path):
 
     # Create a completely different set of "upstream" annotations
     different_data = [{"id": i + 100, "text": f"different {i}"} for i in range(2)]
-    different_tool = AnnotationTool(
+    different_tool = TaskHut(
         data_source=different_data, username="bob", cache_path=str(tmp_path / "different.db")
     )
     for _ in range(2):
@@ -428,9 +408,7 @@ def test_dedup_with_no_overlap(tmp_path):
 def test_dedup_validates_metadata_column(tmp_path):
     """Test that dedup raises error when metadata column is missing."""
     data = [{"id": i, "text": f"test {i}"} for i in range(3)]
-    tool = AnnotationTool(
-        data_source=data, username="alice", cache_path=str(tmp_path / "dedup6.db")
-    )
+    tool = TaskHut(data_source=data, username="alice", cache_path=str(tmp_path / "dedup6.db"))
 
     # Annotate 3 tasks
     for _ in range(3):
@@ -445,4 +423,4 @@ def test_dedup_validates_metadata_column(tmp_path):
         tool.get_annotations(dedup=invalid_upstream)
         assert False, "Should have raised ValueError"
     except ValueError as e:
-        assert "metadata" in str(e).lower()
+        assert "dedup source does not match annotation schema" in str(e).lower()
