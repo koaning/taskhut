@@ -426,7 +426,7 @@ def test_dedup_with_no_overlap(tmp_path):
 
 
 def test_dedup_validates_metadata_column(tmp_path):
-    """Test that dedup raises error when metadata column is missing."""
+    """Test that dedup raises error when data doesn't match Annotation schema."""
     data = [{"id": i, "text": f"test {i}"} for i in range(3)]
     tool = AnnotationTool(
         data_source=data, username="alice", cache_path=str(tmp_path / "dedup6.db")
@@ -437,12 +437,12 @@ def test_dedup_validates_metadata_column(tmp_path):
         task = tool.get_current_task()
         tool.annotate(task, {"label": "positive"})
 
-    # Create invalid upstream data without metadata column
+    # Create invalid upstream data missing required fields
     invalid_upstream = [{"example": {"id": 1}, "annotation": {"label": "test"}, "user": "bob"}]
 
-    # Should raise error about missing metadata column
+    # Should raise error about schema validation
     try:
         tool.get_annotations(dedup=invalid_upstream)
         assert False, "Should have raised ValueError"
     except ValueError as e:
-        assert "metadata" in str(e).lower()
+        assert "annotation schema" in str(e).lower()

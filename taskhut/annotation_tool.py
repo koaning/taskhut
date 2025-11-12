@@ -188,7 +188,6 @@ class AnnotationTool:
 
         # Build annotation record
         example_hash = self.hash_func(example)
-        metadata = metadata or {}
         record = {
             "example_hash": example_hash,
             "example": example,
@@ -196,7 +195,7 @@ class AnnotationTool:
             "annotation": annotation,
             "creation_date": creation_date,
             "annotation_date": datetime.now().isoformat(),
-            "metadata": metadata or {},
+            "metadata": metadata,
         }
 
         # Save to disk cache
@@ -334,28 +333,18 @@ class AnnotationTool:
                 # Cast to DataFrame (handles both DataFrame and iterable)
                 upstream_df = pl.DataFrame(dedup)
 
-            # Validate that upstream has required columns
-            if "metadata" not in upstream_df.columns:
-                raise ValueError("dedup source must have 'metadata' column containing example_hash")
-
-            if "metadata" not in df.columns:
-                raise ValueError(
-                    "Current annotations missing 'metadata' column - cannot deduplicate"
-                )
+            # Validate that upstream matches Annotation schema
+            if len(upstream_df) > 0:
+                sample_row = upstream_df.row(0, named=True)
+                try:
+                    Annotation(**sample_row)
+                except Exception as e:
+                    raise ValueError(f"dedup source does not match Annotation schema: {e}")
 
             # Perform anti-join to keep only annotations not in upstream
-            # Use example_hash from metadata for deduplication
-            df = df.with_columns(
-                pl.col("metadata").struct.field("example_hash").alias("_example_hash")
-            )
-            upstream_df = upstream_df.with_columns(
-                pl.col("metadata").struct.field("example_hash").alias("_example_hash")
-            )
-
+            # Use example_hash (top-level field) for deduplication
             # Anti-join: keep rows from df that don't have matching hash in upstream
-            df = df.join(upstream_df.select("_example_hash"), on="_example_hash", how="anti").drop(
-                "_example_hash"
-            )
+            df = df.join(upstream_df.select("example_hash"), on="example_hash", how="anti")
 
         # Return in requested format
         if return_as == "generator":
