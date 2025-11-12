@@ -26,17 +26,10 @@ while task := tool.get_current_task():
     label = input(f"Label for '{task['text']}': ")
     tool.annotate(task, label)  # Automatically advances to next task
 
-# Check progress
-progress = tool.get_progress()
-print(f"Progress: {progress['completed']}/{progress['total']}")
-
-# Review and correct recent annotations
-recent = tool.get_recent_tasks(limit=5)
-for example in recent:
-    print(f"Recent: {example['text']}")
-    # Optionally correct
-    # tool.annotate(example, "new_label")
+    # Check progress
+    progress = tool.get_progress()
+    print(f"Progress: {progress['completed']}/{progress['total']}")
 
 # Export annotations (saves directly to file)
-tool.export_annotations(filepath="annotations.jsonl", format="jsonl")
+tool.export_annotations(filepath="annotations.jsonl")
 ```
