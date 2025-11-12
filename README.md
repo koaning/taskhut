@@ -9,9 +9,9 @@ from taskhut import AnnotationTool
 
 # Your data to annotate
 data = [
-    {"id": 1, "text": "The cat sat on the mat"},
-    {"id": 2, "text": "Dogs are loyal animals"},
-    {"id": 3, "text": "Birds can fly"}
+    {"id": 1, "text": "Super duper happy"},
+    {"id": 2, "text": "Oh no, negative sentiment!"},
+    {"id": 3, "text": "But this sentiment is mega positive!"}
 ]
 
 # Create annotation tool
