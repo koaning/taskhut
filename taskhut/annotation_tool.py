@@ -10,6 +10,7 @@ import polars as pl
 
 
 class Annotation(BaseModel):
+    example_hash: str
     example: Dict[str, Any]
     user: str
     annotation: Dict[str, Any]
@@ -188,8 +189,8 @@ class AnnotationTool:
         # Build annotation record
         example_hash = self.hash_func(example)
         metadata = metadata or {}
-        metadata["example_hash"] = example_hash
         record = {
+            "example_hash": example_hash,
             "example": example,
             "user": self.username,
             "annotation": annotation,
