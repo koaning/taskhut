@@ -1,10 +1,12 @@
 import json
 import hashlib
-from typing import Callable, Dict, Any, List, Optional, Iterator
+from typing import Callable, Dict, Any, List, Optional, Iterator, Union, Literal, Iterable
 from datetime import datetime
 from collections import deque
+from pathlib import Path
 from diskcache import Cache
 from pydantic import BaseModel
+import polars as pl
 
 
 class Annotation(BaseModel):
@@ -270,54 +272,163 @@ class AnnotationTool:
             "percent_complete": round(percent_complete, 2),
         }
 
-    def get_annotations(self, username: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_annotations(
+        self,
+        username: Optional[str] = None,
+        return_as: Literal["list", "generator", "polars"] = "list",
+        dedup: Optional[Union[str, Path, Iterable[Dict[str, Any]], pl.DataFrame]] = None,
+    ) -> Union[List[Dict[str, Any]], Iterable[Dict[str, Any]], pl.DataFrame]:
         """
-        Retrieve all annotations, optionally filtered by username.
+        Retrieve all annotations, optionally filtered by username and deduplicated.
 
         Args:
             username: If provided, only return annotations by this user.
                      If None, return all annotations from all users.
+            return_as: Format to return annotations in:
+                      - "list": Python list of dictionaries (default, loads all into memory)
+                      - "generator": Python generator yielding one record at a time (memory efficient)
+                      - "polars": Polars DataFrame (enables powerful data analysis)
+            dedup: Optional source of existing annotations to deduplicate against.
+                   Can be a filepath (str/Path), iterable of annotation dicts, or Polars DataFrame.
+                   Deduplication is based on example_hash in metadata.
+                   Note: When using dedup with return_as="generator", all annotations
+                   must be loaded into memory for deduplication.
 
         Returns:
-            List of annotation records with example, annotation, username, and metadata
+            Annotations in the requested format, excluding duplicates if dedup is provided
         """
-        annotations = []
 
-        # Iterate through all cache keys
-        for key in self.cache:
-            # Keys are formatted as "username:hash"
-            if username is not None:
-                if not key.startswith(f"{username}:"):
-                    continue
+        def _iter_annotations() -> Iterator[Dict[str, Any]]:
+            """Internal generator for iterating through annotations."""
+            for key in self.cache:
+                # Keys are formatted as "username:hash"
+                if username is not None:
+                    if not key.startswith(f"{username}:"):
+                        continue
+                yield self.cache[key]
 
-            record = self.cache[key]
-            annotations.append(record)
+        # Get annotations as DataFrame for deduplication
+        df = pl.DataFrame(list(_iter_annotations()))
 
-        return annotations
+        # Apply deduplication if requested
+        if dedup is not None:
+            # Load upstream annotations - convert to Path for consistent handling
+            dedup_path = Path(dedup) if isinstance(dedup, (str, Path)) else None
 
-    def export_annotations(self, filepath: Optional[str] = None, format: str = "jsonl") -> str:
+            if dedup_path is not None:
+                # It's a filepath - infer format and read
+                suffix = dedup_path.suffix.lower()
+                if suffix in (".jsonl", ".ndjson"):
+                    upstream_df = pl.read_ndjson(dedup_path)
+                elif suffix == ".json":
+                    upstream_df = pl.read_json(dedup_path)
+                elif suffix == ".parquet":
+                    upstream_df = pl.read_parquet(dedup_path)
+                else:
+                    raise ValueError(
+                        f"Unsupported file extension for dedup: '{suffix}'. "
+                        f"Supported formats: .jsonl, .ndjson, .json, .parquet"
+                    )
+            else:
+                # Cast to DataFrame (handles both DataFrame and iterable)
+                upstream_df = pl.DataFrame(dedup)
+
+            # Validate that upstream has required columns
+            if "metadata" not in upstream_df.columns:
+                raise ValueError("dedup source must have 'metadata' column containing example_hash")
+
+            if "metadata" not in df.columns:
+                raise ValueError(
+                    "Current annotations missing 'metadata' column - cannot deduplicate"
+                )
+
+            # Perform anti-join to keep only annotations not in upstream
+            # Use example_hash from metadata for deduplication
+            df = df.with_columns(
+                pl.col("metadata").struct.field("example_hash").alias("_example_hash")
+            )
+            upstream_df = upstream_df.with_columns(
+                pl.col("metadata").struct.field("example_hash").alias("_example_hash")
+            )
+
+            # Anti-join: keep rows from df that don't have matching hash in upstream
+            df = df.join(upstream_df.select("_example_hash"), on="_example_hash", how="anti").drop(
+                "_example_hash"
+            )
+
+        # Return in requested format
+        if return_as == "generator":
+            # Convert back to generator
+            def _deduped_generator():
+                for row in df.iter_rows(named=True):
+                    yield row
+
+            return _deduped_generator()
+        elif return_as == "polars":
+            return df
+        else:  # return_as == "list"
+            return df.to_dicts()
+
+    def _write_dataframe(self, df: pl.DataFrame, filepath: Union[str, Path]) -> str:
         """
-        Export annotations in specified format.
+        Write a Polars DataFrame to a file, inferring format from extension.
 
         Args:
-            filepath: Optional path to save the export. If None, returns string only.
-            format: Export format ('jsonl' supported)
+            df: DataFrame to write
+            filepath: Path to write to
 
         Returns:
-            Serialized annotations as string
+            String representation for text formats, empty string for binary formats
         """
-        if format != "jsonl":
-            raise ValueError(f"Unsupported format: {format}. Only 'jsonl' is supported.")
+        path = Path(filepath)
+        suffix = path.suffix.lower()
 
-        annotations = self.get_annotations()
+        if suffix in (".jsonl", ".ndjson"):
+            df.write_ndjson(path)
+            return df.write_ndjson()
+        elif suffix == ".json":
+            df.write_json(path)
+            return df.write_json()
+        elif suffix == ".parquet":
+            df.write_parquet(path)
+            # Parquet is binary, return empty string
+            return ""
+        else:
+            raise ValueError(
+                f"Unsupported file extension: '{suffix}'. "
+                f"Supported formats: .jsonl, .ndjson, .json, .parquet"
+            )
 
-        # Convert to JSONL (one JSON object per line)
-        lines = [json.dumps(record, ensure_ascii=False) for record in annotations]
-        output = "\n".join(lines)
+    def export_annotations(
+        self,
+        filepath: Optional[Union[str, Path]] = None,
+        dedup: Optional[Union[str, Path, Iterable[Dict[str, Any]], pl.DataFrame]] = None,
+    ) -> str:
+        """
+        Export annotations to a file or string. Format is inferred from the file extension.
 
-        # Save to file if filepath is provided
-        if filepath is not None:
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(output)
+        Supported formats:
+        - .jsonl or .ndjson: Newline-delimited JSON (best for streaming large datasets)
+        - .json: JSON array
+        - .parquet: Apache Parquet format (best for data analysis and storage efficiency)
 
-        return output
+        Note: CSV format is not supported because annotations contain nested data structures.
+
+        Args:
+            filepath: Optional path to save the export. Format is inferred from extension.
+                     If None, returns JSONL string for backward compatibility.
+            dedup: Optional source of existing annotations to deduplicate against.
+                   Can be a filepath (str/Path), iterable of annotation dicts, or Polars DataFrame.
+                   Only annotations not present in the dedup source will be exported.
+
+        Returns:
+            Serialized annotations as string (only for JSONL/JSON when filepath is None)
+        """
+        # Get annotations as a Polars DataFrame with deduplication
+        df = self.get_annotations(return_as="polars", dedup=dedup)
+
+        # If no filepath, return JSONL string for backward compatibility
+        if filepath is None:
+            return df.write_ndjson()
+
+        return self._write_dataframe(df, filepath)

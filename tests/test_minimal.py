@@ -1,7 +1,23 @@
 """Minimal unit tests with proper cleanup using tmp_path fixture."""
 
 import json
+import pytest
+import polars as pl
 from taskhut import AnnotationTool, default_hash_func
+
+
+@pytest.fixture
+def annotated_tool(tmp_path):
+    """Create an AnnotationTool with 5 items, 3 annotated."""
+    data = [{"id": i, "text": f"test {i}"} for i in range(5)]
+    tool = AnnotationTool(data_source=data, username="alice", cache_path=str(tmp_path / "test.db"))
+
+    # Annotate 3 tasks
+    for _ in range(3):
+        task = tool.get_current_task()
+        tool.annotate(task, {"label": "positive"})
+
+    return tool
 
 
 def test_default_hash_func(tmp_path):
@@ -158,7 +174,7 @@ def test_annotate_metadata_and_updates(tmp_path):
 
 
 def test_export_to_file(tmp_path):
-    """Export should write valid JSONL to file."""
+    """Export should write valid JSONL to file and infer format from extension."""
     data = [{"id": 1, "text": "test"}]
     tool = AnnotationTool(
         data_source=data, username="alice", cache_path=str(tmp_path / "export.db")
@@ -168,7 +184,7 @@ def test_export_to_file(tmp_path):
     tool.annotate(task, {"label": "positive"})
 
     export_path = tmp_path / "export.jsonl"
-    tool.export_annotations(filepath=str(export_path), format="jsonl")
+    tool.export_annotations(filepath=str(export_path))
 
     # Verify file exists and contains valid JSONL
     assert export_path.exists()
@@ -192,3 +208,241 @@ def test_annotation_loop(tmp_path):
 
     assert tool.get_progress()["completed"] == 15
     assert len(tool.get_annotations()) == 15
+
+
+def convert_to_list(result, return_as):
+    """Convert different return types to list for uniform testing."""
+    if return_as == "generator":
+        return list(result)
+    elif return_as == "polars":
+        return result.to_dicts()
+    else:  # list
+        return result
+
+
+def validate_polars_dataframe(df):
+    """Validate Polars DataFrame has expected structure."""
+    assert isinstance(df, pl.DataFrame)
+    assert "example" in df.columns
+    assert "annotation" in df.columns
+    assert "user" in df.columns
+
+
+@pytest.mark.parametrize("return_as", ["list", "generator", "polars"])
+def test_get_annotations_return_formats(annotated_tool, return_as):
+    """Test get_annotations with different return_as formats."""
+    # Get annotations in the specified format
+    result = annotated_tool.get_annotations(return_as=return_as)
+
+    # Validate Polars-specific structure
+    if return_as == "polars":
+        validate_polars_dataframe(result)
+
+    # Convert to list for uniform testing
+    result_list = convert_to_list(result, return_as)
+
+    assert len(result_list) == 3
+    assert all("example" in ann for ann in result_list)
+    assert all("annotation" in ann for ann in result_list)
+
+
+@pytest.mark.parametrize(
+    "file_ext,reader_func",
+    [
+        (".jsonl", lambda p: pl.read_ndjson(p)),
+        (".ndjson", lambda p: pl.read_ndjson(p)),
+        (".json", lambda p: pl.read_json(p)),
+        (".parquet", lambda p: pl.read_parquet(p)),
+    ],
+)
+def test_export_formats(tmp_path, file_ext, reader_func):
+    """Test exporting annotations in different formats."""
+    data = [{"id": i, "text": f"test {i}"} for i in range(3)]
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "formats.db")
+    )
+
+    # Annotate some tasks
+    for _ in range(3):
+        task = tool.get_current_task()
+        tool.annotate(task, {"label": "positive"})
+
+    # Test export with the given format
+    export_path = tmp_path / f"export{file_ext}"
+    tool.export_annotations(filepath=str(export_path))
+    assert export_path.exists()
+
+    # Verify we can read the file back
+    df = reader_func(export_path)
+    assert len(df) == 3
+    assert "user" in df.columns
+
+
+def test_export_without_filepath_returns_jsonl_string(tmp_path):
+    """Test that export_annotations without filepath returns JSONL string."""
+    data = [{"id": 1, "text": "test"}]
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "string.db")
+    )
+
+    task = tool.get_current_task()
+    tool.annotate(task, {"label": "positive"})
+
+    # Test without filepath returns string
+    result = tool.export_annotations()
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+    # Verify it's valid JSONL
+    record = json.loads(result.strip())
+    assert "example" in record
+    assert "annotation" in record
+
+
+def make_file_dedup_source(annotations, tmp_path):
+    """Create a JSONL file from annotations."""
+    path = tmp_path / "upstream.jsonl"
+    with open(path, "w") as f:
+        for ann in annotations:
+            f.write(json.dumps(ann) + "\n")
+    return str(path)
+
+
+def make_path_dedup_source(annotations, tmp_path):
+    """Create a Parquet file from annotations and return Path object."""
+    path = tmp_path / "upstream.parquet"
+    pl.DataFrame(annotations).write_parquet(path)
+    return path
+
+
+def make_list_dedup_source(annotations, tmp_path):
+    """Return annotations as list."""
+    return annotations
+
+
+def make_dataframe_dedup_source(annotations, tmp_path):
+    """Return annotations as Polars DataFrame."""
+    return pl.DataFrame(annotations)
+
+
+@pytest.mark.parametrize(
+    "make_dedup_source,num_upstream",
+    [
+        (make_file_dedup_source, 3),
+        (make_list_dedup_source, 2),
+        (make_dataframe_dedup_source, 4),
+        (make_path_dedup_source, 3),
+    ],
+)
+def test_get_annotations_with_dedup(tmp_path, make_dedup_source, num_upstream):
+    """Test deduplication using different source types."""
+    data = [{"id": i, "text": f"test {i}"} for i in range(5)]
+    tool = AnnotationTool(
+        data_source=data,
+        username="alice",
+        cache_path=str(tmp_path / "dedup.db"),
+    )
+
+    # Annotate 5 tasks
+    for _ in range(5):
+        task = tool.get_current_task()
+        tool.annotate(task, {"label": "positive"})
+
+    # Get all annotations and prepare dedup source
+    all_annotations = tool.get_annotations()
+    upstream_annotations = all_annotations[:num_upstream]
+    dedup_source = make_dedup_source(upstream_annotations, tmp_path)
+
+    # Get annotations with deduplication
+    deduped = tool.get_annotations(dedup=dedup_source)
+
+    # Should only have (5 - num_upstream) annotations
+    expected = 5 - num_upstream
+    assert len(deduped) == expected
+
+
+def test_export_annotations_with_dedup(tmp_path):
+    """Test export_annotations with deduplication."""
+    data = [{"id": i, "text": f"test {i}"} for i in range(5)]
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "dedup4.db")
+    )
+
+    # Annotate 5 tasks
+    for _ in range(5):
+        task = tool.get_current_task()
+        tool.annotate(task, {"label": "positive"})
+
+    # Export first 3 annotations as "upstream"
+    all_annotations = tool.get_annotations()
+    upstream_annotations = all_annotations[:3]
+    upstream_path = tmp_path / "upstream.parquet"
+
+    # Export upstream to parquet
+    upstream_df = pl.DataFrame(upstream_annotations)
+    upstream_df.write_parquet(upstream_path)
+
+    # Export with deduplication
+    export_path = tmp_path / "deduped_export.jsonl"
+    tool.export_annotations(filepath=str(export_path), dedup=str(upstream_path))
+
+    # Read back and verify
+    assert export_path.exists()
+    with open(export_path) as f:
+        lines = f.readlines()
+
+    # Should only have 2 lines (5 total - 3 upstream)
+    assert len(lines) == 2
+
+
+def test_dedup_with_no_overlap(tmp_path):
+    """Test deduplication when there's no overlap between datasets."""
+    data = [{"id": i, "text": f"test {i}"} for i in range(3)]
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "dedup5.db")
+    )
+
+    # Annotate 3 tasks
+    for _ in range(3):
+        task = tool.get_current_task()
+        tool.annotate(task, {"label": "positive"})
+
+    # Create a completely different set of "upstream" annotations
+    different_data = [{"id": i + 100, "text": f"different {i}"} for i in range(2)]
+    different_tool = AnnotationTool(
+        data_source=different_data, username="bob", cache_path=str(tmp_path / "different.db")
+    )
+    for _ in range(2):
+        task = different_tool.get_current_task()
+        different_tool.annotate(task, {"label": "negative"})
+
+    upstream_annotations = different_tool.get_annotations()
+
+    # Get annotations with deduplication - should keep all since no overlap
+    deduped = tool.get_annotations(dedup=upstream_annotations)
+
+    # Should still have all 3 annotations
+    assert len(deduped) == 3
+
+
+def test_dedup_validates_metadata_column(tmp_path):
+    """Test that dedup raises error when metadata column is missing."""
+    data = [{"id": i, "text": f"test {i}"} for i in range(3)]
+    tool = AnnotationTool(
+        data_source=data, username="alice", cache_path=str(tmp_path / "dedup6.db")
+    )
+
+    # Annotate 3 tasks
+    for _ in range(3):
+        task = tool.get_current_task()
+        tool.annotate(task, {"label": "positive"})
+
+    # Create invalid upstream data without metadata column
+    invalid_upstream = [{"example": {"id": 1}, "annotation": {"label": "test"}, "user": "bob"}]
+
+    # Should raise error about missing metadata column
+    try:
+        tool.get_annotations(dedup=invalid_upstream)
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "metadata" in str(e).lower()

@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "diskcache>=5.6.3",
     "pydantic>=2.12.4",
+    "polars>=0.20.0",
 ]
 
 [project.optional-dependencies]
@@ -18,7 +19,6 @@ dev = [
     "marimo",
     "moboard>=0.1.0",
     "mohtml>=0.1.11",
-    "polars>=0.20.0",
 ]
 
 [build-system]
