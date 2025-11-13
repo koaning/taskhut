@@ -23,7 +23,8 @@ tool = TaskHut(
 
 # Annotate tasks using get_current_task (recommended)
 while task := tool.get_current_task():
-    label = input(f"Label for '{task['text']}': ")
+    # In interactive usage: label = input(f"Label for '{task['text']}': ")
+    label = "positive"  # Example label
     tool.annotate(task, {"label": label})  # annotation must be a dict; automatically advances to next task
 
     # Check progress

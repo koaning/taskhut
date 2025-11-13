@@ -753,6 +753,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mktestdocs"
+version = "0.2.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/04/aced274f9ea76dfdb7a36c1b729863ebbf61e94b60a0d1eefa2556a61df5/mktestdocs-0.2.5.tar.gz", hash = "sha256:7935d4e665b34b690cdf14749abb842723652485f67af12dce51099bcb98e105", size = 10519, upload-time = "2025-07-25T12:39:29.073Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4f/eb/3686be82dfeb12eb968f002254464e282722e4ac52c465c2998764583f34/mktestdocs-0.2.5-py3-none-any.whl", hash = "sha256:2b20d2387b2025597f3129773edef16d09b08b1b6d31da6cc51af5b693c10430", size = 9096, upload-time = "2025-07-25T12:39:27.985Z" },
+]
+
+[[package]]
 name = "moboard"
 version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1416,6 +1425,7 @@ version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "diskcache" },
+    { name = "polars" },
     { name = "pydantic" },
 ]
 
@@ -1423,10 +1433,10 @@ dependencies = [
 dev = [
     { name = "anthropic" },
     { name = "marimo" },
+    { name = "mktestdocs" },
     { name = "moboard" },
     { name = "mofresh" },
     { name = "mohtml" },
-    { name = "polars" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "ruff" },
@@ -1437,10 +1447,11 @@ requires-dist = [
     { name = "anthropic", marker = "extra == 'dev'", specifier = ">=0.72.0" },
     { name = "diskcache", specifier = ">=5.6.3" },
     { name = "marimo", marker = "extra == 'dev'" },
+    { name = "mktestdocs", marker = "extra == 'dev'", specifier = ">=0.2.0" },
     { name = "moboard", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "mofresh", marker = "extra == 'dev'", specifier = ">=0.2.6" },
     { name = "mohtml", marker = "extra == 'dev'", specifier = ">=0.1.11" },
-    { name = "polars", marker = "extra == 'dev'", specifier = ">=0.20.0" },
+    { name = "polars", specifier = ">=0.20.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pydantic", specifier = ">=2.12.4" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
