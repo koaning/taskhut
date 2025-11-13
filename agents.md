@@ -49,8 +49,19 @@ The library recently underwent API improvements:
 
 The recommended workflow is now:
 ```python
+from taskhut import TaskHut
+
+# Create tool instance
+tool = TaskHut(
+    data_source=[{"id": 1, "text": "example"}],
+    username="alice",
+    cache_path="./annotations.db"
+)
+
+# Annotate tasks
 while task := tool.get_current_task():
-    label = input(f"Label: ")
+    # In real usage: label = input(f"Label: ")
+    label = {"sentiment": "positive"}  # Example annotation
     tool.annotate(task, label)  # Automatically advances
 ```
 

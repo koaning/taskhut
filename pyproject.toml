@@ -19,6 +19,7 @@ dev = [
     "marimo",
     "moboard>=0.1.0",
     "mohtml>=0.1.11",
+    "mktestdocs>=0.2.0",
 ]
 
 [build-system]

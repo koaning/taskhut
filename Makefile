@@ -11,6 +11,7 @@ install:
 	@echo "Setting up taskhut project..."
 	uv venv --allow-existing
 	uv pip install -e ".[dev]"
+	.venv/bin/pre-commit install
 	@echo "✓ Installation complete!"
 	@echo "Activate the environment with: source .venv/bin/activate"
 

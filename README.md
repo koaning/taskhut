@@ -5,7 +5,7 @@ A task routing utility, meant for help with simple team-based annotation situati
 ## Quick Start
 
 ```python
-from taskhut import AnnotationTool
+from taskhut import TaskHut
 
 # Your data to annotate
 data = [
@@ -15,7 +15,7 @@ data = [
 ]
 
 # Create annotation tool
-tool = AnnotationTool(
+tool = TaskHut(
     data_source=data,
     username="alice",
     cache_path="./annotations.db"
@@ -23,13 +23,14 @@ tool = AnnotationTool(
 
 # Annotate tasks using get_current_task (recommended)
 while task := tool.get_current_task():
-    label = input(f"Label for '{task['text']}': ")
-    tool.annotate(task, label)  # Automatically advances to next task
+    # In interactive usage: label = input(f"Label for '{task['text']}': ")
+    label = "positive"  # Example label
+    tool.annotate(task, {"label": label})  # annotation must be a dict; automatically advances to next task
 
     # Check progress
     progress = tool.get_progress()
     print(f"Progress: {progress['completed']}/{progress['total']}")
 
-# Export annotations (saves directly to file)
+# Export annotations (format inferred from file extension: .jsonl, .json, or .parquet)
 tool.export_annotations(filepath="annotations.jsonl")
 ```
